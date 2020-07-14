@@ -38,11 +38,26 @@ std::size_t Allocator::sizeForLevel(std::size_t level) {
     return (this->workSize >> level);
 }
 
+Allocator::Block* Allocator::buddyOf(Block* block, std::size_t blockSize)
+{
+    std::size_t indexOfBlock = indexForBlock(block, blockSize);
+    std::size_t indexOfBuddy = indexOfBlock ^ 1;
+    return reinterpret_cast<Block*>(this->buffer + indexOfBuddy* blockSize);
+}
+
+std::size_t Allocator::indexForBlock(Block* block, std::size_t blockSize)
+{
+    // index_in_level_of(p,n) == (p - _buffer_start) / size_of_level(n)
+    std::size_t indexInLevel = (reinterpret_cast<std::byte*>(block) - this->buffer) / blockSize;
+    return (1<<blockForSize(blockSize)) + indexInLevel - 1;
+}
+
 void* Allocator::_allocate(std::size_t size) {
     std::size_t level = blockForSize(size);
 
     // If a block with the correct size is available return it
     if (this->tree[level] != nullptr) {
+        this->splitList[indexForBlock(this->tree[level], sizeForLevel(level))] = true;
         return std::exchange(this->tree[level], this->tree[level]->next);
     }
 
@@ -58,8 +73,12 @@ void* Allocator::_allocate(std::size_t size) {
     do {
         // Get the block which must be split
         std::byte* blockToBeSplit = reinterpret_cast<std::byte*>(this->tree[level]);
+        // Mark as split
+        this->splitList[indexForBlock(this->tree[level], sizeForLevel(level))] = true;
         // Remove it from the list for it's size
         this->tree[level] = this->tree[level]->next;
+        
+
         // Create its two children
         Block* left = reinterpret_cast<Block*>(blockToBeSplit);
         Block* right = reinterpret_cast<Block*>(blockToBeSplit + sizeForLevel(level + 1));
@@ -89,6 +108,7 @@ MIN_ALLOC_BLOCK_SIZE(16)
         this->buffer[i] = (std::byte)((i % 256) ? (i % 256) : 7) ;
     }
     this->buffer[allocatedSize - 1] = (std::byte)'$';*/
+    memset(this->splitList, 0, sizeof(this->splitList));
     initTree();
 }
 
@@ -104,4 +124,5 @@ void* Allocator::allocate(std::size_t size) {
 
 void Allocator::deallocate(void* address, const std::size_t size) {
     memset(address, -1, size);
+
 }

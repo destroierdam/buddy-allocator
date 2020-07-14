@@ -1,6 +1,8 @@
 #pragma once
 #include <cstddef>
 #include <array>
+#include <bitset>
+
 class Allocator {
 private:
     struct Block {
@@ -13,9 +15,20 @@ private:
     /// Given the level in the tree calculates the size of the blocks on that level
     std::size_t sizeForLevel(std::size_t level);
 
+    /// Returns a pointer to the buddy block based on the block's address and size
+    Block* buddyOf(Block* block, std::size_t size);
+
+    std::size_t indexForBlock(Block* block, std::size_t size);
+
+    /// At each index shows whether the block is split or not
+    bool splitList[1024];
+
     const std::size_t MIN_ALLOC_BLOCK_SIZE;
+
     /// The depth of the tree
     std::size_t LEVELS;
+
+    /// An array of linked lists containing the free blocks
     std::array<Block*, 32> tree;
 
     std::byte* const buffer;
