@@ -62,7 +62,9 @@ void* Allocator::_allocate(std::size_t size) {
 
     // If a block with the correct size is available return it
     if (this->tree[level] != nullptr) {
-        this->splitList[indexForBlock(this->tree[level], sizeForLevel(level))] = true;
+        const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
+        this->mergelist.setBlock(idx, true);
+        this->splitList[idx] = true;
         return std::exchange(this->tree[level], this->tree[level]->next);
     }
 
@@ -79,7 +81,9 @@ void* Allocator::_allocate(std::size_t size) {
         // Get the block which must be split
         std::byte* blockToBeSplit = reinterpret_cast<std::byte*>(this->tree[level]);
         // Mark as split
-        this->splitList[indexForBlock(this->tree[level], sizeForLevel(level))] = true;
+        const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
+        this->mergelist.setBlock(idx, true);
+        this->splitList[idx] = true;
         // Remove it from the list for it's size
         this->tree[level] = this->tree[level]->next;
         
@@ -94,7 +98,10 @@ void* Allocator::_allocate(std::size_t size) {
         level++;
     } while (level < blockLevelInTreeForSize(size));
 
-    this->splitList[indexForBlock(this->tree[level], sizeForLevel(level))] = true;
+    const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
+    this->mergelist.setBlock(idx, true);
+    this->splitList[idx] = true;
+
     return std::exchange(this->tree[level], this->tree[level]->next);
 }
 
@@ -106,6 +113,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
 
     // Mark block as free
     this->splitList[blockIdx] = false;
+    this->mergelist.free(blockIdx);
 
     // If we have deallocated all memory(reached the root of the tree)
     if (size == this->workSize) {
@@ -115,6 +123,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     }
 
     // If it's buddy is not available then we do not merge
+    this->mergelist.canBeFreed(buddyIdx); // buddyIsAvailable(buddyIdx)
     if (this->splitList[buddyIdx]) {
         // Add the block in the free list
         block->next = this->tree[level];
