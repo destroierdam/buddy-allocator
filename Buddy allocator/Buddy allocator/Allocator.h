@@ -10,7 +10,7 @@ private:
     };
 
     /// Returns the index of the block in the tree which corresponds to the block size
-    std::size_t blockForSize(std::size_t size);
+    std::size_t blockLevelInTreeForSize(std::size_t size);
 
     /// Given the level in the tree calculates the size of the blocks on that level
     std::size_t sizeForLevel(std::size_t level);
@@ -18,6 +18,7 @@ private:
     /// Returns a pointer to the buddy block based on the block's address and size
     Block* buddyOf(Block* block, std::size_t size);
 
+    /// Returns the index of the block in a binary tree
     std::size_t indexForBlock(Block* block, std::size_t size);
 
     /// At each index shows whether the block is split or not
@@ -46,6 +47,8 @@ private:
 
     void reserveDummy(std::size_t size);
     void* _allocate(std::size_t size);
+    void _deallocate(Block* address, const std::size_t size);
+
 public:
     Allocator(const std::size_t size);
     ~Allocator();

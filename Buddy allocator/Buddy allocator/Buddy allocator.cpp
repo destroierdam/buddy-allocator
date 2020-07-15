@@ -20,4 +20,11 @@ int main()
 
     char* str = static_cast<char*>(allocator.allocate(64));
     strcpy_s(str, 64, "The quick brown fox jumps over the lazy dog. Make them 64 chars");
+
+    allocator.deallocate(n, sizeof(tripleLong));
+    allocator.deallocate(ptr, sizeof(long));
+    allocator.deallocate(str, 64);
+    
+    char* newString = static_cast<char*>(allocator.allocate(64));
+    strcpy_s(str, 64, "Another string with length 64 bytes used for testing here!!!!!!");
 }

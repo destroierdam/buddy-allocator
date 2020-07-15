@@ -25,12 +25,13 @@ void Allocator::initTree() {
     memset(this->tree.data(), 0, this->tree.size() * sizeof(Block*));
     // Set root of tree
     this->tree[0] = reinterpret_cast<Block*>(this->buffer);
+    this->tree[0]->next = nullptr;
 
     const std::size_t dummyMemorySize = workSize - allocatedSize;
     reserveDummy(dummyMemorySize);
 }
 
-std::size_t Allocator::blockForSize(std::size_t size) {
+std::size_t Allocator::blockLevelInTreeForSize(std::size_t size) {
     return log2(this->workSize) - log2(size);
 }
 
@@ -40,7 +41,11 @@ std::size_t Allocator::sizeForLevel(std::size_t level) {
 
 Allocator::Block* Allocator::buddyOf(Block* block, std::size_t blockSize)
 {
-    std::size_t indexOfBlock = indexForBlock(block, blockSize);
+    // If we are looking for the buddy of the root block
+    if (blockSize == this->workSize) {
+        return block; // nullptr?
+    }
+    std::size_t indexOfBlock = (reinterpret_cast<std::byte*>(block) - this->buffer) / blockSize;
     std::size_t indexOfBuddy = indexOfBlock ^ 1;
     return reinterpret_cast<Block*>(this->buffer + indexOfBuddy* blockSize);
 }
@@ -49,11 +54,11 @@ std::size_t Allocator::indexForBlock(Block* block, std::size_t blockSize)
 {
     // index_in_level_of(p,n) == (p - _buffer_start) / size_of_level(n)
     std::size_t indexInLevel = (reinterpret_cast<std::byte*>(block) - this->buffer) / blockSize;
-    return (1<<blockForSize(blockSize)) + indexInLevel - 1;
+    return (1<<blockLevelInTreeForSize(blockSize)) + indexInLevel - 1;
 }
 
 void* Allocator::_allocate(std::size_t size) {
-    std::size_t level = blockForSize(size);
+    std::size_t level = blockLevelInTreeForSize(size);
 
     // If a block with the correct size is available return it
     if (this->tree[level] != nullptr) {
@@ -87,9 +92,52 @@ void* Allocator::_allocate(std::size_t size) {
         left->next = right;
         this->tree[level + 1] = left;
         level++;
-    } while (level < blockForSize(size));
+    } while (level < blockLevelInTreeForSize(size));
 
+    this->splitList[indexForBlock(this->tree[level], sizeForLevel(level))] = true;
     return std::exchange(this->tree[level], this->tree[level]->next);
+}
+
+void Allocator::_deallocate(Block* block, std::size_t size) {
+    Block* buddy = buddyOf(block, size);
+    std::size_t blockIdx = indexForBlock(block, size);
+    std::size_t buddyIdx = indexForBlock(buddy, size); // buddyIdx % 2 == 0 ? buddyIdx - 1 : buddyIdx + 1;
+    std::size_t level = blockLevelInTreeForSize(size);
+
+    // Mark block as free
+    this->splitList[blockIdx] = false;
+
+    // If we have deallocated all memory(reached the root of the tree)
+    if (size == this->workSize) {
+        block->next = nullptr;
+        this->tree[0] = block;
+        return;
+    }
+
+    // If it's buddy is not available then we do not merge
+    if (this->splitList[buddyIdx]) {
+        // Add the block in the free list
+        block->next = this->tree[level];
+        this->tree[level] = block;
+        return;
+    }
+    // Buddy is available
+    // Merge all free blocks and continue recursively up the tree
+
+    // Remove buddy from the free list
+    Block** it = &(this->tree[level]);
+    // TODO: Refactor this
+    while (true) {
+        if (*it == buddy) {
+            *it = (*it)->next;
+            break;
+        }
+        it = &((*it)->next);
+    }
+    Block* mergedBlock = std::min(block, buddy);
+    size <<= 1;
+    level--;
+    _deallocate(mergedBlock, size);
 }
 
 Allocator::Allocator(const std::size_t size) : buffer(initBuffer(size)),
@@ -102,12 +150,7 @@ MIN_ALLOC_BLOCK_SIZE(16)
     std::clog << "Working size: " << workSize << '\n';
     std::clog << "Depth of tree: " << LEVELS << '\n';
 
-    memset(this->buffer, 0, this->allocatedSize);
-    /*this->buffer[0] = (std::byte)'@';
-    for (std::size_t i = 1; i < this->allocatedSize; i++) {
-        this->buffer[i] = (std::byte)((i % 256) ? (i % 256) : 7) ;
-    }
-    this->buffer[allocatedSize - 1] = (std::byte)'$';*/
+    memset(this->buffer, 'F', this->allocatedSize); // 'F'ree
     memset(this->splitList, 0, sizeof(this->splitList));
     initTree();
 }
@@ -119,10 +162,14 @@ Allocator::~Allocator() {
 void* Allocator::allocate(std::size_t size) {
     size = Utility::closestBiggerPowerOf2(size);
     size = std::max(size, this->MIN_ALLOC_BLOCK_SIZE);
-    return _allocate(size);
+    void* const ans = _allocate(size);
+    memset(ans, 'A', size); // 'A'llocated
+    return ans;
 }
 
-void Allocator::deallocate(void* address, const std::size_t size) {
-    memset(address, -1, size);
-
+void Allocator::deallocate(void* address, std::size_t size) {
+    size = Utility::closestBiggerPowerOf2(size);
+    size = std::max(size, this->MIN_ALLOC_BLOCK_SIZE);
+    memset(address, 'D', size); // 'D'eallocated
+    _deallocate(reinterpret_cast<Block*>(address), size);
 }
