@@ -64,7 +64,6 @@ void* Allocator::_allocate(std::size_t size) {
     if (this->tree[level] != nullptr) {
         const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
         this->mergelist.setBlock(idx, true);
-        this->splitList[idx] = true;
         return std::exchange(this->tree[level], this->tree[level]->next);
     }
 
@@ -83,7 +82,6 @@ void* Allocator::_allocate(std::size_t size) {
         // Mark as split
         const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
         this->mergelist.setBlock(idx, true);
-        this->splitList[idx] = true;
         // Remove it from the list for it's size
         this->tree[level] = this->tree[level]->next;
         
@@ -100,7 +98,6 @@ void* Allocator::_allocate(std::size_t size) {
 
     const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
     this->mergelist.setBlock(idx, true);
-    this->splitList[idx] = true;
 
     return std::exchange(this->tree[level], this->tree[level]->next);
 }
@@ -112,7 +109,6 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     std::size_t level = blockLevelInTreeForSize(size);
 
     // Mark block as free
-    this->splitList[blockIdx] = false;
     this->mergelist.free(blockIdx);
 
     // If we have deallocated all memory(reached the root of the tree)
@@ -123,8 +119,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     }
 
     // If it's buddy is not available then we do not merge
-    this->mergelist.canBeFreed(buddyIdx); // buddyIsAvailable(buddyIdx)
-    if (this->splitList[buddyIdx]) {
+    if (this->mergelist.canBeFreed(buddyIdx)) { // .buddyIsAvailable(buddyIdx)
         // Add the block in the free list
         block->next = this->tree[level];
         this->tree[level] = block;
@@ -160,7 +155,6 @@ MIN_ALLOC_BLOCK_SIZE(16)
     std::clog << "Depth of tree: " << LEVELS << '\n';
 
     memset(this->buffer, 'F', this->allocatedSize); // 'F'ree
-    memset(this->splitList, 0, sizeof(this->splitList));
     initTree();
 }
 

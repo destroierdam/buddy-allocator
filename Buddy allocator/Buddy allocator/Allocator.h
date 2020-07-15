@@ -21,9 +21,6 @@ private:
     /// Returns the index of the block in a binary tree
     std::size_t indexForBlock(Block* block, std::size_t size);
 
-    /// At each index shows whether the block is split or not
-    bool splitList[1024];
-
     class Mergelist {
     private:
         bool root:1;
@@ -59,6 +56,7 @@ private:
         }
     };
 
+    /// At each index shows whether the block is split or not
     Mergelist mergelist;
 
     const std::size_t MIN_ALLOC_BLOCK_SIZE;
