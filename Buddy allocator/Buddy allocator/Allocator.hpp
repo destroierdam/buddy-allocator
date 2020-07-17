@@ -2,7 +2,9 @@
 #include <cstddef>
 #include <array>
 #include <bitset>
+#include <cassert>
 #include "Logger.h"
+#include "Bitset.h"
 
 class Allocator {
 private:
@@ -54,10 +56,6 @@ private:
             list[offsetIndex] = list[offsetIndex] ^ value;
             return *this;
         }
-        bool getBlock(std::size_t index) {
-            if (index == 0) { return root; }
-            return list[index];
-        }
         bool canBeFreed(std::size_t index) {
             if (index == 0) { return !root; }
             const std::size_t offsetIndex = (index - 1) / 2;
@@ -80,6 +78,104 @@ private:
 
     /// At each index shows whether the block is split or not
     Mergelist mergelist;
+
+
+
+    class SplitTable {
+    private:
+        std::optional<Bitset> table;
+        std::size_t sizeOfEntireTree;
+    public:
+        SplitTable() :table(std::nullopt), sizeOfEntireTree(0) {}
+        void initTable(std::size_t sizeOfEntireTree, std::byte* buffer, std::size_t sizeInBytes) {
+            this->sizeOfEntireTree = sizeOfEntireTree;
+            this->table.emplace(buffer, sizeInBytes);
+        }
+
+        bool operator[](std::size_t index) const {
+            if (index < sizeOfEntireTree / 2 - 1) {
+                return table.value()[index];
+            } else {
+                return false;
+            }
+        }
+        SplitTable& flip() {
+            table.value().flip();
+            return *this;
+        }
+        SplitTable& flip(std::size_t index) {
+            if (index < sizeOfEntireTree / 2) {
+                table.value().flip(index);
+            }
+            else {
+                assert(false);
+            }
+            return *this;
+        }
+        SplitTable& set(std::size_t index, bool value) {
+            if (index < sizeOfEntireTree / 2) {
+                table.value().set(index, value);
+            }
+            else {
+                assert(false);
+            }
+            return *this;
+        }
+    };
+
+    SplitTable splitTable;
+    
+
+    class FreeTable {
+    private:
+        bool root : 1;
+        std::optional<Bitset> table;
+        std::size_t sizeOfEntireTree;
+    public:
+        FreeTable() :root(false), sizeOfEntireTree(0), table(std::nullopt) {}
+        void initTable(std::size_t sizeOfEntireTree, std::byte* buffer, std::size_t sizeInBytes) {
+            this->sizeOfEntireTree = sizeOfEntireTree;
+            this->table.emplace(buffer, sizeInBytes);
+            this->table.value().flip();
+        }
+        FreeTable& setBlock(std::size_t index, bool value) {
+            /*if (index == 0) { root = value; return *this; }
+            const std::size_t offsetIndex = (index - 1) / 2;
+            const bool newValue = table.value()[offsetIndex] ^ value;
+            table.value().set(offsetIndex, newValue);*/
+            table.value().set(index, value);
+            return *this;
+        }
+        bool operator[](std::size_t index) {
+            /*if (index == 0) { return root; }
+            const std::size_t offsetIndex = (index - 1) / 2;
+            return table.value()[offsetIndex];*/
+            return table.value()[index];
+        }
+        bool canBeFreed(std::size_t index) {
+            /*if (index == 0) { return !root; }
+            const std::size_t offsetIndex = (index - 1) / 2;
+            return table.value()[offsetIndex] ^ 0;*/
+            return !table.value()[index];
+        }
+        bool canBeAllocated(std::size_t index) {
+            if (index == 0) { return root; }
+            const std::size_t offsetIndex = (index - 1) / 2;
+            return table.value()[offsetIndex] ^ 1;
+        }
+        bool free(const std::size_t index) {
+            if (index == 0) {
+                return root = !root;
+            }
+            /*const std::size_t offsetIndex = (index - 1) / 2;
+            table.value().flip(offsetIndex);
+            return table.value()[offsetIndex];*/
+            table.value().set(index, true);
+            return table.value()[index];
+        }
+    };
+
+    FreeTable freeTable;
 
     /// The minimum size of the blocks that can be allocated
     const std::size_t MIN_ALLOC_BLOCK_SIZE;

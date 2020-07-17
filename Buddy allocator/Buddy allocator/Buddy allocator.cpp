@@ -90,8 +90,6 @@ void runTests() {
 
 int main()
 {
-    testBitset();
-    return 0;
     std::ofstream logStream("Log.csv");
     Allocator allocator(128);
 
