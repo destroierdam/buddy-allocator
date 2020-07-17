@@ -1,5 +1,5 @@
 #include "Logger.h"
-#pragma warning(disable:4996) // asctime
+#pragma warning(disable:4996)
 
 void Logger::logDatetime() {
 	std::time_t now = std::time(nullptr);
@@ -33,23 +33,24 @@ void Logger::logSeverityLevel(SeverityLevel level)
 void Logger::logAction(Action action) {
 	switch (action) {
 	case Action::none:
-		out << "none";
+		out << "none,\t\t";
 		break;
 	case Action::allocation:
-		out << "allocation";
+		out << "allocation,\t";
 		break;
 	case Action::deallocation:
-		out << "deallocation";
+		out << "deallocation,\t";
 		break;
 	case Action::leak:
-		out << "leak";
+		out << "leak,\t";
+		break;
 	case Action::exception:
-		out << "exception";
+		out << "exception,\t";
 		break;
 	default:
-		out << "unknown";
+		out << "unknown,\t";
 	}
-	out << ", ";
+	// out << ", ";
 }
 
 Logger::Logger(std::ostream& outputStream):out(outputStream) {

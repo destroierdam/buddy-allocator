@@ -2,9 +2,18 @@
 #include <cstddef>
 #include <array>
 #include <bitset>
+#include "Logger.h"
 
 class Allocator {
 private:
+    Logger logger;
+
+    /// The number of bytes available for allocation
+    std::size_t available;
+
+    /// The number of bytes allocated by the allocator
+    std::size_t used;
+
     struct Block {
         Block* next;
     };
@@ -21,6 +30,9 @@ private:
     /// Returns the index of the block in a binary tree
     std::size_t indexForBlock(Block* block, std::size_t size);
 
+    /// Finds all allocated blocks of memory, logs them and deallocates them
+    void collectGarbage();
+
     class Mergelist {
     private:
         bool root:1;
@@ -31,6 +43,7 @@ private:
             if (index == 0) { root = value; return *this; }
             const std::size_t offsetIndex = (index - 1) / 2;
             list[offsetIndex] = list[offsetIndex] ^ value;
+            return *this;
         }
         bool getBlock(std::size_t index) {
             if (index == 0) { return root; }
@@ -59,6 +72,7 @@ private:
     /// At each index shows whether the block is split or not
     Mergelist mergelist;
 
+    /// The minimum size of the blocks that can be allocated
     const std::size_t MIN_ALLOC_BLOCK_SIZE;
 
     /// The depth of the tree
@@ -68,12 +82,13 @@ private:
     std::array<Block*, 32> tree;
 
     std::byte* const buffer;
+
     /// The theoretical size of the buffer the algorithm will work with
     const std::size_t workSize;
     
     /// Number of bytes actually allocated from the OS
     const std::size_t allocatedSize;
-    
+
     /// Initial allocation of the buffer
     std::byte* initBuffer(const std::size_t size);
     
@@ -85,9 +100,10 @@ private:
     void _deallocate(Block* address, const std::size_t size);
 
 public:
-    Allocator(const std::size_t size);
+    Allocator(const std::size_t size, std::ostream& logStream = std::clog);
     ~Allocator();
 
     void* allocate(std::size_t size);
-    void deallocate(void* address, const std::size_t size);
+    void* allocate(std::size_t size, std::nothrow_t) noexcept;
+    void deallocate(void* address, const std::size_t size) noexcept;
 };
