@@ -84,12 +84,13 @@ void testUtilitySmallerPower() {
 void runTests() {
     testUtilityReverseNumber();
     testUtilitySmallerPower();
-    // testDummyAlloc();
+    testDummyAlloc();
     testBitset();
 }
 
 int main()
 {
+    runTests();
     std::ofstream logStream("Log.csv");
     Allocator allocator(128);
 

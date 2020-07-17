@@ -24,22 +24,16 @@ void Allocator::reserveDummy(std::size_t size) {
 
     std::size_t leafsNeeded = ceil((double)size / MIN_ALLOC_BLOCK_SIZE);
 
-    std::bitset<16> freelist; freelist.flip();
-    std::bitset<16> splitList;
-
     // Go to all the leafs, mark them as allocated and mark all of their parents as split
     std::size_t idxLeafs = indexForBlock(reinterpret_cast<Block*>(this->workBuffer), MIN_ALLOC_BLOCK_SIZE);
 
     for (std::size_t i = 0; i < leafsNeeded; i++) {
-        freelist[idxLeafs] = false;
         this->freeTable.setBlock(idxLeafs, false);
         std::size_t parent = (idxLeafs - 1) / 2;
 
         // Mark parents as split
-        for (std::size_t level = LEVELS - 2; level != -1 && splitList[parent] == 0; level--) {
-            splitList[parent] = 1;
+        for (std::size_t level = LEVELS - 2; level != -1 && this->splitTable[parent] == 0; level--) {
             this->splitTable.set(parent, true);
-            freelist[parent] = 0;
             this->freeTable.setBlock(parent, false);
             parent = (parent - 1) / 2;
         }
@@ -52,21 +46,18 @@ void Allocator::reserveDummy(std::size_t size) {
     while (level < LEVELS-1) {
         std::size_t leftIdx = 2 * nodeIdx + 1;
         std::size_t rightIdx = 2 * nodeIdx + 2;
-        this->splitTable[nodeIdx];
-        if (splitList[nodeIdx]) {
-            this->splitTable[rightIdx];
-            if (splitList[rightIdx]) {
+        
+        if (this->splitTable[nodeIdx]) {
+            if (this->splitTable[rightIdx]) {
                 nodeIdx = rightIdx;
                 level++;
                 continue;
             }
-            this->freeTable[rightIdx];
-            if (freelist[rightIdx]) {
+            if (this->freeTable[rightIdx]) {
                 this->tree[level+1] = blockForIndex(rightIdx);
                 this->tree[level + 1]->next = nullptr;
             }
-            this->splitTable[leftIdx];
-            if (splitList[leftIdx]) {
+            if (this->splitTable[leftIdx]) {
                 nodeIdx = leftIdx;
             } else {
                 break;
@@ -78,12 +69,6 @@ void Allocator::reserveDummy(std::size_t size) {
     available = this->workSize - leafsNeeded*MIN_ALLOC_BLOCK_SIZE;
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
                "Available for allocation: " + Utility::stringFor(available));
-
-    // Populate mergeList for testing purposes
-    this->mergelist.setBlock(0, true);
-    this->mergelist.setBlock(1, true);
-    this->mergelist.setBlock(3, true);
-    this->mergelist.setBlock(7, true);
 }
 
 
@@ -182,7 +167,6 @@ void* Allocator::_allocate(std::size_t size) {
     // If a block with the correct size is available return it
     if (this->tree[level] != nullptr) {
         const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
-        this->mergelist.setBlock(idx, true);
         this->freeTable.setBlock(idx, false);
         return std::exchange(this->tree[level], this->tree[level]->next);
     }
@@ -201,7 +185,6 @@ void* Allocator::_allocate(std::size_t size) {
         std::byte* blockToBeSplit = reinterpret_cast<std::byte*>(this->tree[level]);
         // Mark as split
         const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
-        this->mergelist.setBlock(idx, true);
         this->splitTable.set(idx, true);
         this->freeTable.setBlock(idx, false);
         // Remove it from the list for it's size
@@ -218,7 +201,6 @@ void* Allocator::_allocate(std::size_t size) {
     } while (level < blockLevelInTreeForSize(size));
 
     const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
-    this->mergelist.setBlock(idx, true);
     this->freeTable.setBlock(idx, false);
 
     return std::exchange(this->tree[level], this->tree[level]->next);
@@ -231,7 +213,6 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     std::size_t level = blockLevelInTreeForSize(size);
 
     // Mark block as free
-    this->mergelist.free(blockIdx);
     this->freeTable.free(blockIdx);
 
     // If we have deallocated all memory(reached the root of the tree)
@@ -242,8 +223,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     }
 
     // If it's buddy is not available then we do not merge
-    !(this->freeTable[buddyIdx]);
-    if (this->mergelist.canBeFreed(buddyIdx)) { // .buddyIsAvailable(buddyIdx)
+    if (this->freeTable[buddyIdx] == false) { // .buddyIsAvailable(buddyIdx)
         // Add the block in the free list
         block->next = this->tree[level];
         this->tree[level] = block;
@@ -265,6 +245,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     Block* mergedBlock = std::min(block, buddy);
     size <<= 1;
     level--;
+    // Unsplit parent
     this->splitTable.set((blockIdx - 1) / 2, false);
     _deallocate(mergedBlock, size);
 }

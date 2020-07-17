@@ -44,43 +44,6 @@ private:
     /// Finds all allocated blocks of memory, logs them and deallocates them
     void collectGarbage();
 
-    class Mergelist {
-    private:
-        bool root:1;
-        std::bitset<(1<<16)> list;
-    public:
-        Mergelist() :root(false) {}
-        Mergelist& setBlock(std::size_t index, bool value) {
-            if (index == 0) { root = value; return *this; }
-            const std::size_t offsetIndex = (index - 1) / 2;
-            list[offsetIndex] = list[offsetIndex] ^ value;
-            return *this;
-        }
-        bool canBeFreed(std::size_t index) {
-            if (index == 0) { return !root; }
-            const std::size_t offsetIndex = (index - 1) / 2;
-            return list[offsetIndex] ^ 0;
-        }
-        bool canBeAllocated(std::size_t index) {
-            if (index == 0) { return root; }
-            const std::size_t offsetIndex = (index - 1) / 2;
-            return list[offsetIndex] ^ 1;
-        }
-        bool free(const std::size_t index) {
-            if (index == 0) {
-                return root = !root; 
-            }
-            const std::size_t offsetIndex = (index - 1) / 2;
-            list.flip(offsetIndex);
-            return list[offsetIndex];
-        }
-    };
-
-    /// At each index shows whether the block is split or not
-    Mergelist mergelist;
-
-
-
     class SplitTable {
     private:
         std::optional<Bitset> table;
