@@ -30,6 +30,15 @@ private:
     /// Returns the index of the block in a binary tree
     std::size_t indexForBlock(Block* block, std::size_t size);
 
+    /// Given an index in a binary tree returns the index in the level
+    std::size_t levelIndexForBlockForTreeIndex(std::size_t treeIndex);
+
+    /// Returns the block from an index in a binary tree
+    Block* blockForIndex(std::size_t index);
+
+    /// Returns the level in the tree in which the index is 
+    std::size_t levelForIndex(std::size_t index);
+
     /// Finds all allocated blocks of memory, logs them and deallocates them
     void collectGarbage();
 
@@ -81,7 +90,11 @@ private:
     /// An array of linked lists containing the free blocks
     std::array<Block*, 32> tree;
 
-    std::byte* const buffer;
+    /// The theoretical beginning address of the buffer
+    std::byte* workBuffer;
+
+    /// The address of the buffer actually allocated from the OS
+    std::byte* const allocatedBuffer;
 
     /// The theoretical size of the buffer the algorithm will work with
     const std::size_t workSize;

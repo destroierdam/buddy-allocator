@@ -7,6 +7,7 @@
 class Utility {
 public:
     static unsigned long closestBiggerPowerOf2(unsigned long number);
+    static unsigned long closestSmallerPowerOf2(unsigned long number);
     template<typename T>
     static StaticString<64> stringFor(T number);
 };

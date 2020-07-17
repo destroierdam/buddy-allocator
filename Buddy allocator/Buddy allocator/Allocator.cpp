@@ -8,6 +8,7 @@
 #include <exception>
 #include <utility>
 #include <string>
+#include <cmath>
 #include "Utility.h"
 
 std::byte* Allocator::initBuffer(const std::size_t size) {
@@ -21,21 +22,71 @@ void Allocator::reserveDummy(std::size_t size) {
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
                "Size not a power of 2, reserving " + Utility::stringFor(size) + " bytes");
 
-    throw std::logic_error("Method not implemented");
+    std::size_t leafsNeeded = ceil((double)size / MIN_ALLOC_BLOCK_SIZE);
+
+    std::bitset<16> freelist; freelist.flip();
+    std::bitset<16> splitList;
+
+    // Go to all the leafs, mark them as allocated and mark all of their parents as split
+    std::size_t idxLeafs = indexForBlock(reinterpret_cast<Block*>(this->workBuffer), MIN_ALLOC_BLOCK_SIZE);
+
+    for (std::size_t i = 0; i < leafsNeeded; i++) {
+        freelist[idxLeafs] = false;
+        std::size_t parent = (idxLeafs - 1) / 2;
+
+        // Mark parents as split
+        for (std::size_t level = LEVELS - 2; level != -1 && splitList[parent] == 0; level--) {
+            splitList[parent] = 1;
+            freelist[parent] = 0;
+            parent = (parent - 1) / 2;
+        }
+        idxLeafs++;
+    }
+
+    // Fill linked lists
+    std::size_t nodeIdx = 0;
+    std::size_t level = 0;
+    while (level < LEVELS-1) {
+        std::size_t leftIdx = 2 * nodeIdx + 1;
+        std::size_t rightIdx = 2 * nodeIdx + 2;
+        if (splitList[nodeIdx]) {
+            if (splitList[rightIdx]) {
+                nodeIdx = rightIdx;
+                level++;
+                continue;
+            }
+            if (freelist[rightIdx]) {
+                this->tree[level+1] = blockForIndex(rightIdx);
+                this->tree[level + 1]->next = nullptr;
+            }
+            if (splitList[leftIdx]) {
+                nodeIdx = leftIdx;
+            } else {
+                break;
+            }
+            level++;
+        }
+    }
+
+    available = this->workSize - leafsNeeded*MIN_ALLOC_BLOCK_SIZE;
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
-               "Available for allocation: " + Utility::stringFor(size));
-    available = size;
+               "Available for allocation: " + Utility::stringFor(available));
+
+    // Populate mergeList for testing purposes
+    assert(false);
+
 }
 
 
 void Allocator::initTree() {
     // Set every pointer in the array to nullptr
     memset(this->tree.data(), 0, this->tree.size() * sizeof(Block*));
-    // Set root of tree
-    this->tree[0] = reinterpret_cast<Block*>(this->buffer);
-    this->tree[0]->next = nullptr;
+    //// Set root of tree
+    //this->tree[0] = reinterpret_cast<Block*>(this->buffer);
+    //this->tree[0]->next = nullptr;
 
     const std::size_t dummyMemorySize = workSize - allocatedSize;
+    this->workBuffer = this->allocatedBuffer - dummyMemorySize;
     reserveDummy(dummyMemorySize);
 }
 
@@ -53,16 +104,45 @@ Allocator::Block* Allocator::buddyOf(Block* block, std::size_t blockSize)
     if (blockSize == this->workSize) {
         return block; // nullptr?
     }
-    std::size_t indexOfBlock = (reinterpret_cast<std::byte*>(block) - this->buffer) / blockSize;
+    std::size_t indexOfBlock = (reinterpret_cast<std::byte*>(block) - this->workBuffer) / blockSize;
     std::size_t indexOfBuddy = indexOfBlock ^ 1;
-    return reinterpret_cast<Block*>(this->buffer + indexOfBuddy* blockSize);
+    return reinterpret_cast<Block*>(this->workBuffer + indexOfBuddy* blockSize);
 }
 
 std::size_t Allocator::indexForBlock(Block* block, std::size_t blockSize)
 {
     // index_in_level_of(p,n) == (p - _buffer_start) / size_of_level(n)
-    std::size_t indexInLevel = (reinterpret_cast<std::byte*>(block) - this->buffer) / blockSize;
+    std::size_t indexInLevel = (reinterpret_cast<std::byte*>(block) - this->workBuffer) / blockSize;
     return (1<<blockLevelInTreeForSize(blockSize)) + indexInLevel - 1;
+}
+
+std::size_t Allocator::levelIndexForBlockForTreeIndex(std::size_t treeIndex)
+{
+    if (treeIndex == 0) { return 0; }
+    std::size_t closestBiggerPowerOf2 = Utility::closestBiggerPowerOf2(treeIndex);
+    if (treeIndex == closestBiggerPowerOf2 - 1) {
+        return 0;
+    }
+    std::size_t firstIndexInLevel = Utility::closestSmallerPowerOf2(treeIndex) - 1;
+    return treeIndex - firstIndexInLevel;
+}
+
+Allocator::Block* Allocator::blockForIndex(std::size_t index)
+{
+    const std::size_t blockLevel = levelForIndex(index);
+    const std::size_t blockSize = sizeForLevel(blockLevel);
+    const std::size_t blockIndexInLevel = levelIndexForBlockForTreeIndex(index);
+    return reinterpret_cast<Block*>(this->workBuffer + blockSize*blockIndexInLevel);
+}
+
+std::size_t Allocator::levelForIndex(std::size_t index)
+{
+    if (index == 0) { return 0; }
+    std::size_t location = Utility::closestBiggerPowerOf2(index);
+    if (index == location || index == location - 1) {
+        return log2(location);
+    }
+    return log2(location) - 1;
 }
 
 void Allocator::collectGarbage() {
@@ -168,7 +248,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     _deallocate(mergedBlock, size);
 }
 
-Allocator::Allocator(const std::size_t size, std::ostream& logStream) : buffer(initBuffer(size)),
+Allocator::Allocator(const std::size_t size, std::ostream& logStream) : allocatedBuffer(initBuffer(size)),
 workSize(Utility::closestBiggerPowerOf2(size)),
 allocatedSize(size),
 MIN_ALLOC_BLOCK_SIZE(16),
@@ -182,7 +262,7 @@ logger(logStream)
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
                "Working size: " + Utility::stringFor(workSize));
 
-    memset(this->buffer, 'F', this->allocatedSize); // 'F'ree
+    memset(this->allocatedBuffer, 'F', this->allocatedSize); // 'F'ree
     initTree();
 }
 
@@ -191,8 +271,8 @@ Allocator::~Allocator() {
         logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak");
         // collectGarbage();
     }
-    assert(used == available);
-    free(this->buffer);
+    // assert(false); // used = available
+    free(this->allocatedBuffer);
 }
 
 void* Allocator::allocate(std::size_t size) {

@@ -12,14 +12,38 @@ struct tripleLong {
     long right;
 };
 
-void testUtility() {
+void testUtilityReverseNumber() {
     std::size_t number = 123456;
     StaticString<64> str = Utility::stringFor(number);
     assert(str == "654321");
 }
 
+void testDummyAlloc() {
+    Allocator a(95);
+    char* str = static_cast<char*>(a.allocate(64));
+    strcpy_s(str, 64, "The quick brown fox jumps over the lazy dog. Make them 64 chars");
+
+    char* str2 = static_cast<char*>(a.allocate(16));
+    strcpy_s(str2, 16, "Str w Len16char");
+
+}
+
+void testUtilitySmallerPower() {
+    assert(Utility::closestSmallerPowerOf2(7) == 4);
+    assert(Utility::closestSmallerPowerOf2(14) == 8);
+    assert(Utility::closestSmallerPowerOf2(8) == 8);
+}
+
+void runTests() {
+    testUtilityReverseNumber();
+    testUtilitySmallerPower();
+    // testDummyAlloc();
+}
+
 int main()
 {
+    testDummyAlloc();
+    return 0;
     std::ofstream logStream("Log.csv");
     Allocator allocator(128);
 
