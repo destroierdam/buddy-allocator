@@ -154,12 +154,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Allocator.cpp" />
+    <ClCompile Include="Bitset.cpp" />
     <ClCompile Include="Buddy allocator.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocator.hpp" />
+    <ClInclude Include="Bitset.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="StaticString.h" />
     <ClInclude Include="Utility.h" />
