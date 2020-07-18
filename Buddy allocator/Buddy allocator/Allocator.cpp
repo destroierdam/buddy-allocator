@@ -28,13 +28,13 @@ void Allocator::reserveDummy(std::size_t size) {
     std::size_t idxLeafs = indexForBlock(reinterpret_cast<Block*>(this->workBuffer), MIN_ALLOC_BLOCK_SIZE);
 
     for (std::size_t i = 0; i < leafsNeeded; i++) {
-        this->freeTable.setBlock(idxLeafs, false);
+        this->freeTable.take(idxLeafs);
         std::size_t parent = (idxLeafs - 1) / 2;
 
         // Mark parents as split
         for (std::size_t level = LEVELS - 2; level != -1 && this->splitTable[parent] == 0; level--) {
             this->splitTable.set(parent, true);
-            this->freeTable.setBlock(parent, false);
+            this->freeTable.take(parent);
             parent = (parent - 1) / 2;
         }
         idxLeafs++;
@@ -46,7 +46,7 @@ void Allocator::reserveDummy(std::size_t size) {
     while (level < LEVELS-1) {
         std::size_t leftIdx = 2 * nodeIdx + 1;
         std::size_t rightIdx = 2 * nodeIdx + 2;
-        
+        // [[likely]]
         if (this->splitTable[nodeIdx]) {
             if (this->splitTable[rightIdx]) {
                 nodeIdx = rightIdx;
@@ -63,6 +63,9 @@ void Allocator::reserveDummy(std::size_t size) {
                 break;
             }
             level++;
+        } else {
+            logger.log(Logger::SeverityLevel::warning, Logger::Action::initialisation,
+                       "Block is not split during filling of linked lists");
         }
     }
 
@@ -76,8 +79,8 @@ void Allocator::initTree() {
     const std::size_t dummyMemorySize = workSize - allocatedSize;
     this->workBuffer = this->allocatedBuffer - dummyMemorySize;
 
-    const std::size_t splitTableSizeInBytes = 1 << (LEVELS - 1 - 3);
-    const std::size_t freeTableSizeInBytes = 1 << (LEVELS - 3);
+    const std::size_t splitTableSizeInBytes = 1 << (LEVELS - 1 - 3); // -1, because we do not split leafs, -3, because we are using bitset
+    const std::size_t freeTableSizeInBytes = 1 << (LEVELS - 3 - 1); // -3, because we are using bitset, -1, because we keep two buddies in one bit
     const std::size_t freeListsSizeInBytes = LEVELS * sizeof(Block*); 
 
     this->splitTable.initTable((1 << (LEVELS)), this->allocatedBuffer, splitTableSizeInBytes);
@@ -167,8 +170,7 @@ void* Allocator::_allocate(std::size_t size) {
     // If a block with the correct size is available return it
     if (this->freeLists[level] != nullptr) {        
         const std::size_t idx = indexForBlock(this->freeLists[level], sizeForLevel(level));
-        this->freeTable.setBlock(idx, false);
-
+        this->freeTable.take(idx);
         return std::exchange(this->freeLists[level], this->freeLists[level]->next);
     }
 
@@ -187,10 +189,8 @@ void* Allocator::_allocate(std::size_t size) {
         // Mark as split
         const std::size_t idx = indexForBlock(this->freeLists[level], sizeForLevel(level));
 
-        assert(idx == indexForBlock(this->freeLists[level], sizeForLevel(level)));
-
         this->splitTable.set(idx, true);
-        this->freeTable.setBlock(idx, false);
+        this->freeTable.take(idx);
         // Remove it from the list for it's size
         this->freeLists[level] = this->freeLists[level]->next;
         
@@ -206,7 +206,7 @@ void* Allocator::_allocate(std::size_t size) {
     } while (level < blockLevelInTreeForSize(size));
 
     const std::size_t idx = indexForBlock(this->freeLists[level], sizeForLevel(level));
-    this->freeTable.setBlock(idx, false);
+    this->freeTable.take(idx);
 
     return std::exchange(this->freeLists[level], this->freeLists[level]->next);
 }
@@ -228,7 +228,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     }
 
     // If it's buddy is not available then we do not merge
-    if (this->freeTable[buddyIdx] == false) { // .buddyIsAvailable(buddyIdx)
+    if (this->freeTable[buddyIdx]) {
         // Add the block in the free list
         block->next = this->freeLists[level];
         this->freeLists[level] = block;

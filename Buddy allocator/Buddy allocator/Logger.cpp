@@ -33,24 +33,27 @@ void Logger::logSeverityLevel(SeverityLevel level)
 void Logger::logAction(Action action) {
 	switch (action) {
 	case Action::none:
-		out << "none,\t\t";
+		out << "none";
 		break;
 	case Action::allocation:
-		out << "allocation,\t";
+		out << "allocation";
 		break;
 	case Action::deallocation:
-		out << "deallocation,\t";
+		out << "deallocation";
 		break;
 	case Action::leak:
-		out << "leak,\t";
+		out << "leak";
 		break;
 	case Action::exception:
-		out << "exception,\t";
+		out << "exception";
+		break;
+	case Action::initialisation:
+		out << "initialisation";
 		break;
 	default:
-		out << "unknown,\t";
+		out << "unknown";
 	}
-	// out << ", ";
+	out << ", ";
 }
 
 Logger::Logger(std::ostream& outputStream):out(outputStream) {

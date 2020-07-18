@@ -12,7 +12,7 @@ private:
 	std::ostream& out;
 public:
 	enum class SeverityLevel { info, warning, error };
-	enum class Action { none, allocation, deallocation, leak, exception };
+	enum class Action { none, allocation, deallocation, leak, exception, initialisation };
 private:
 	void logDatetime();
 	void logSeverityLevel(SeverityLevel level);

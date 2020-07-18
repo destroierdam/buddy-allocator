@@ -9,7 +9,7 @@ Bitset::Bitset(std::byte* block, std::size_t sizeInBytes):block(block), sizeInBy
 bool Bitset::operator[](const std::size_t index) const {
 	const std::size_t byteIndex = index / CHAR_BIT;
 	const std::size_t bitIndex = index % CHAR_BIT;
-	const bool res = (bool)(this->block[byteIndex] & (std::byte)(1 << (CHAR_BIT - bitIndex-1)));
+	const bool res = (bool)(this->block[byteIndex] & (std::byte)(1 << (CHAR_BIT - bitIndex - 1)));
 	return res;
 }
 
