@@ -7,12 +7,6 @@
 #include "Bitset.h"
 #include <cassert>
 
-struct tripleLong {
-    long left;
-    long mid;
-    long right;
-};
-
 void testUtilityReverseNumber() {
     std::size_t number = 123456;
     StaticString<64> str = Utility::stringFor(number);
@@ -93,25 +87,23 @@ int main()
     std::ofstream logStream("Log.csv");
     Allocator allocator(128);
 
-    tripleLong * n = static_cast<tripleLong*>(allocator.allocate(sizeof(tripleLong)));
-    n->left = 'A';
-    n->mid = 255;
-    n->right = 256;
-
-    long* ptr = static_cast<long*>(allocator.allocate(sizeof(long)));
-    *ptr = 31;
+    char * n = static_cast<char*>(allocator.allocate(16));
+    strcpy_s(n, 16, "Sixteen bytes!!");
+    
+    char* ptr = static_cast<char*>(allocator.allocate(8));
+    strcpy_s(ptr, 8, "Eight b");
 
     char* str = static_cast<char*>(allocator.allocate(64));
     strcpy_s(str, 64, "The quick brown fox jumps over the lazy dog. Make them 64 chars");
 
-    allocator.deallocate(n, sizeof(tripleLong));
-    allocator.deallocate(ptr, sizeof(long));
-    allocator.deallocate(str, 64);
+    allocator.deallocate(ptr);
+    allocator.deallocate(n);
+    allocator.deallocate(str);
     
     char* newString = static_cast<char*>(allocator.allocate(64));
     strcpy_s(newString, 64, "Another string with length 64 bytes used for testing here!!!!!!");
 
-    n = static_cast<tripleLong*>(allocator.allocate(sizeof(tripleLong)));
+    n = static_cast<char*>(allocator.allocate(12));
     void* badAllocEx = allocator.allocate(64, std::nothrow);
     assert(badAllocEx == nullptr);
 }

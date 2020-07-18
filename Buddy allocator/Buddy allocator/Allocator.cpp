@@ -146,6 +146,25 @@ std::size_t Allocator::levelForIndex(std::size_t index)
     return log2(location) - 1;
 }
 
+std::size_t Allocator::levelForAllocatedBlock(std::byte* address)
+{
+    std::size_t level = LEVELS - 1;
+    std::size_t idxInLevel = (address - this->workBuffer) / MIN_ALLOC_BLOCK_SIZE;
+    std::size_t treeIdx = (1 << (LEVELS - 1)) - 1 + idxInLevel;
+
+    while (level > 0) {
+        std::size_t parentIdx = (treeIdx - 1) / 2;
+        if (this->splitTable[parentIdx]) {
+            return level;
+        }
+        else {
+            treeIdx = parentIdx;
+            level--;
+        }
+    }
+    return 0;
+}
+
 void Allocator::collectGarbage() {
     std::size_t level = LEVELS - 1;
 
@@ -329,4 +348,10 @@ void Allocator::deallocate(void* address, std::size_t size) noexcept {
     logger.log(Logger::SeverityLevel::info, Logger::Action::deallocation,
         "Deallocation of block " + Utility::stringFor((long)(address)) + " with size " +
         Utility::stringFor(size) + " bytes completed");
+}
+
+void Allocator::deallocate(void* address) noexcept {
+    std::size_t level = levelForAllocatedBlock(reinterpret_cast<std::byte*>(address));
+    std::size_t blockSize = sizeForLevel(level);
+    this->deallocate(address, blockSize);
 }
