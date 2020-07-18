@@ -54,8 +54,6 @@ void Allocator::reserveDummy(std::size_t size) {
                 continue;
             }
             if (this->freeTable[rightIdx]) {
-                this->tree[level + 1] = blockForIndex(rightIdx);
-                this->tree[level + 1]->next = nullptr;
                 this->freeLists[level + 1] = blockForIndex(rightIdx);
                 this->freeLists[level + 1]->next = nullptr;
             }
@@ -75,12 +73,6 @@ void Allocator::reserveDummy(std::size_t size) {
 
 
 void Allocator::initTree() {
-    // Set every pointer in the array to nullptr
-    memset(this->tree.data(), 0, this->tree.size() * sizeof(Block*));
-    //// Set root of tree
-    //this->tree[0] = reinterpret_cast<Block*>(this->buffer);
-    //this->tree[0]->next = nullptr;
-
     const std::size_t dummyMemorySize = workSize - allocatedSize;
     this->workBuffer = this->allocatedBuffer - dummyMemorySize;
 
@@ -173,75 +165,50 @@ void* Allocator::_allocate(std::size_t size) {
     std::size_t level = blockLevelInTreeForSize(size);
 
     // If a block with the correct size is available return it
-    
-    if (this->tree[level] != nullptr) {
-        assert(this->freeLists[level] != nullptr);
-        
-        const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
-
-        assert(indexForBlock(this->freeLists[level], sizeForLevel(level)) == idx);
-
+    if (this->freeLists[level] != nullptr) {        
+        const std::size_t idx = indexForBlock(this->freeLists[level], sizeForLevel(level));
         this->freeTable.setBlock(idx, false);
 
-        assert(this->freeLists[level] == this->tree[level]);
-
-        std::exchange(this->freeLists[level], this->freeLists[level]->next);
-        return std::exchange(this->tree[level], this->tree[level]->next);
+        return std::exchange(this->freeLists[level], this->freeLists[level]->next);
     }
-    assert(this->freeLists[level] == nullptr);
 
     // Go up the tree trying to find a block to split
-    while (level != -1 && this->tree[level] == nullptr) {
-        assert(this->freeLists[level] == nullptr);
+    while (level != -1 && this->freeLists[level] == nullptr) {
         level--;
     }
     // If no memory is found
     if (level == -1) {
         throw std::bad_alloc();
     }
-    assert(this->freeLists[level] != nullptr);
 
     do {
         // Get the block which must be split
-        assert(this->freeLists[level] == this->tree[level]);
-        std::byte* blockToBeSplit = reinterpret_cast<std::byte*>(this->tree[level]);
+        std::byte* blockToBeSplit = reinterpret_cast<std::byte*>(this->freeLists[level]);
         // Mark as split
-        const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
+        const std::size_t idx = indexForBlock(this->freeLists[level], sizeForLevel(level));
 
         assert(idx == indexForBlock(this->freeLists[level], sizeForLevel(level)));
 
         this->splitTable.set(idx, true);
         this->freeTable.setBlock(idx, false);
         // Remove it from the list for it's size
-        assert(this->freeLists[level] == this->tree[level]);
-
-        this->tree[level] = this->tree[level]->next;
         this->freeLists[level] = this->freeLists[level]->next;
-
-        assert(this->freeLists[level] == this->tree[level]);
         
         // Create its two children
         Block* left = reinterpret_cast<Block*>(blockToBeSplit);
         Block* right = reinterpret_cast<Block*>(blockToBeSplit + sizeForLevel(level + 1));
         // Add them to the list for the next level
-        assert(this->freeLists[level + 1] == this->tree[level + 1]);
-        right->next = this->tree[level + 1];
-        assert(right->next == this->freeLists[level + 1]);
+        right->next = this->freeLists[level + 1];
         left->next = right;
-        this->tree[level + 1] = left;
         this->freeLists[level + 1] = left;
 
         level++;
     } while (level < blockLevelInTreeForSize(size));
 
-    const std::size_t idx = indexForBlock(this->tree[level], sizeForLevel(level));
-    assert(idx == indexForBlock(this->freeLists[level], sizeForLevel(level)));
+    const std::size_t idx = indexForBlock(this->freeLists[level], sizeForLevel(level));
     this->freeTable.setBlock(idx, false);
 
-    assert(this->tree[level] == this->freeLists[level]);
-    std::exchange(this->freeLists[level], this->freeLists[level]->next);
-
-    return std::exchange(this->tree[level], this->tree[level]->next);
+    return std::exchange(this->freeLists[level], this->freeLists[level]->next);
 }
 
 void Allocator::_deallocate(Block* block, std::size_t size) {
@@ -256,7 +223,6 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     // If we have deallocated all memory(reached the root of the tree)
     if (size == this->workSize) {
         block->next = nullptr;
-        this->tree[0] = block;
         this->freeLists[0] == block;
         return;
     }
@@ -264,10 +230,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     // If it's buddy is not available then we do not merge
     if (this->freeTable[buddyIdx] == false) { // .buddyIsAvailable(buddyIdx)
         // Add the block in the free list
-        assert(this->tree[level] == this->freeLists[level]);
-        block->next = this->tree[level];
-        assert(block->next == this->freeLists[level]);
-        this->tree[level] = block;
+        block->next = this->freeLists[level];
         this->freeLists[level] = block;
         return;
     }
@@ -275,7 +238,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     // Merge all free blocks and continue recursively up the tree
 
     // Remove buddy from the free list
-    Block** it = &(this->tree[level]);
+    Block** it = &(this->freeLists[level]);
     // TODO: Refactor this
     while (true) {
         if (*it == buddy) {
@@ -284,18 +247,6 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
         }
         it = &((*it)->next);
     }
-
-    Block** it2 = &(this->freeLists[level]);
-    // TODO: Refactor this
-    while (true) {
-        if (*it2 == buddy) {
-            *it2 = (*it2)->next;
-            break;
-        }
-        it2 = &((*it2)->next);
-    }
-
-
 
     Block* mergedBlock = std::min(block, buddy);
     size <<= 1;
@@ -324,13 +275,10 @@ logger(logStream)
 }
 
 Allocator::~Allocator() {
-    if (this->tree[0] == nullptr) {
-        assert(this->freeLists[0] == nullptr);
-        logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak");
-        // collectGarbage();
-    } else {
-        assert(this->freeLists[0] != nullptr);
-    }
+    //if (this->freeLists[0] == nullptr) {
+    //    logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak");
+    //    // collectGarbage();
+    //}
     // assert(false); // used = available
     free(this->allocatedBuffer);
 }
