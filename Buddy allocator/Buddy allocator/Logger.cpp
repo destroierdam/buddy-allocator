@@ -1,15 +1,34 @@
 #include "Logger.h"
-#pragma warning(disable:4996)
+#include <chrono>
+#include <iomanip>
 
 void Logger::logDatetime() {
-	std::time_t now = std::time(nullptr);
+	std::time_t theTime = std::time(nullptr);
+	auto now = std::chrono::system_clock::now();
+	auto duration = now.time_since_epoch();
 
+	/* UTC: -3:00 = 24 - 3 = 21 */
+	typedef std::chrono::duration< int, std::ratio_multiply< std::chrono::hours::period, std::ratio< 21 > >::type > Days;
+	Days days = std::chrono::duration_cast<Days>(duration);
+	duration -= days;
+	auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+	duration -= hours;
+	auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+	duration -= minutes;
+	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+	duration -= seconds;
+	auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+
+	struct tm aTime;
+	localtime_s(&aTime, &theTime);
 	char dateStr[64];
-	char timeStr[64];
-	std::strftime(dateStr, sizeof(dateStr), "%d.%m.%y", std::localtime(&now));
-	std::strftime(timeStr, sizeof(timeStr), "%H:%M:%S", std::localtime(&now));
-	out << dateStr << ", ";
-	out << timeStr << ", ";
+	std::strftime(dateStr, sizeof(dateStr), "%d.%m.%y", &aTime);
+
+	out << dateStr << ", "
+		<< aTime.tm_hour << ":"
+		<< minutes.count() << ":"
+		<< seconds.count() << "."
+		<< milliseconds.count() << ", ";
 }
 
 void Logger::logSeverityLevel(SeverityLevel level)

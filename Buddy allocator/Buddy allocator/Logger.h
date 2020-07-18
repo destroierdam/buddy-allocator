@@ -21,7 +21,7 @@ public:
 	Logger(std::ostream& out = std::clog);
 	void _log(SeverityLevel level, Action action = Action::none, const StaticString<64>& message = "", const char * fileName = "", int line = 0);
 
-#ifndef log(level, action, message)
+#ifndef log
 #define log(level, action, message) _log(level, action, message, __FILE__, __LINE__)
 #endif // log(level, action, message)
 };

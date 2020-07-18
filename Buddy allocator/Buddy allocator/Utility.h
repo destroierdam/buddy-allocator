@@ -10,6 +10,7 @@ public:
     static unsigned long closestSmallerPowerOf2(unsigned long number);
     template<typename T>
     static StaticString<64> stringFor(T number);
+    static unsigned long log2(unsigned long number);
 };
 
 template<typename T>

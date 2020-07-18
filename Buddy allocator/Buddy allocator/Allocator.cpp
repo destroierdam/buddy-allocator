@@ -22,7 +22,7 @@ void Allocator::reserveDummy(std::size_t size) {
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
                "Size not a power of 2, reserving " + Utility::stringFor(size) + " bytes");
 
-    std::size_t leafsNeeded = ceil((double)size / MIN_ALLOC_BLOCK_SIZE);
+    std::size_t leafsNeeded = static_cast<std::size_t>(ceil((double)size / MIN_ALLOC_BLOCK_SIZE));
 
     // Go to all the leafs, mark them as allocated and mark all of their parents as split
     std::size_t idxLeafs = indexForBlock(reinterpret_cast<Block*>(this->workBuffer), MIN_ALLOC_BLOCK_SIZE);
@@ -92,7 +92,7 @@ void Allocator::initTree() {
 }
 
 std::size_t Allocator::blockLevelInTreeForSize(std::size_t size) {
-    return log2(this->workSize) - log2(size);
+    return Utility::log2(this->workSize) - Utility::log2(size);
 }
 
 std::size_t Allocator::sizeForLevel(std::size_t level) {
@@ -141,9 +141,9 @@ std::size_t Allocator::levelForIndex(std::size_t index)
     if (index == 0) { return 0; }
     std::size_t location = Utility::closestBiggerPowerOf2(index);
     if (index == location || index == location - 1) {
-        return log2(location);
+        return Utility::log2(location);
     }
-    return log2(location) - 1;
+    return Utility::log2(location) - 1;
 }
 
 std::size_t Allocator::levelForAllocatedBlock(std::byte* address)
@@ -242,7 +242,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     // If we have deallocated all memory(reached the root of the tree)
     if (size == this->workSize) {
         block->next = nullptr;
-        this->freeLists[0] == block;
+        this->freeLists[0] = block;
         return;
     }
 
@@ -275,13 +275,14 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     _deallocate(mergedBlock, size);
 }
 
-Allocator::Allocator(const std::size_t size, std::ostream& logStream) : allocatedBuffer(initBuffer(size)),
-workSize(Utility::closestBiggerPowerOf2(size)),
-allocatedSize(size),
+Allocator::Allocator(const std::size_t size, std::ostream& logStream) : 
+logger(logStream),
 MIN_ALLOC_BLOCK_SIZE(16),
-logger(logStream)
+allocatedBuffer(initBuffer(size)),
+workSize(Utility::closestBiggerPowerOf2(size)),
+allocatedSize(size)
 {
-    LEVELS = log2(workSize) - log2(MIN_ALLOC_BLOCK_SIZE) + 1;
+    LEVELS = Utility::log2(workSize) - Utility::log2(MIN_ALLOC_BLOCK_SIZE) + 1;
    
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
                "Allocator constructed with size " + Utility::stringFor(size));
