@@ -24,8 +24,8 @@ void testDummyAlloc() {
     char* str = static_cast<char*>(a.allocate(64));
     strcpy_s(str, 64, "The quick brown fox jumps over the lazy dog. Make them 64 chars");
 
-    char* str2 = static_cast<char*>(a.allocate(16));
-    strcpy_s(str2, 16, "Str w Len16char");
+    /*char* str2 = static_cast<char*>(a.allocate(16));
+    strcpy_s(str2, 16, "Str w Len16char");*/
 
 }
 
@@ -84,13 +84,12 @@ void testUtilitySmallerPower() {
 void runTests() {
     testUtilityReverseNumber();
     testUtilitySmallerPower();
-    testDummyAlloc();
+    // testDummyAlloc();
     testBitset();
 }
 
 int main()
 {
-    runTests();
     std::ofstream logStream("Log.csv");
     Allocator allocator(128);
 

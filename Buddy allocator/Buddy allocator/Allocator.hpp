@@ -149,6 +149,8 @@ private:
     /// An array of linked lists containing the free blocks
     std::array<Block*, 32> tree;
 
+    Block** freeLists;
+
     /// The theoretical beginning address of the buffer
     std::byte* workBuffer;
 
