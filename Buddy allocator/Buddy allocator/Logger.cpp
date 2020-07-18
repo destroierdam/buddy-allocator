@@ -31,8 +31,7 @@ void Logger::logDatetime() {
 		<< milliseconds.count() << ", ";
 }
 
-void Logger::logSeverityLevel(SeverityLevel level)
-{
+void Logger::logSeverityLevel(SeverityLevel level) {
 	switch (level) {
 	case SeverityLevel::info:
 		out << "info";

@@ -7,10 +7,10 @@
 #include "Bitset.h"
 #include <cassert>
 
-void testUtilityReverseNumber() {
+void testUtilityStringForNumber() {
     std::size_t number = 123456;
     StaticString<64> str = Utility::stringFor(number);
-    assert(str == "654321");
+    assert(str == "123456");
 }
 
 void testDummyAlloc() {
@@ -71,35 +71,45 @@ void testUtilitySmallerPower() {
     assert(Utility::closestSmallerPowerOf2(8) == 8);
 }
 
+void testUtilityDecToBin() {
+    assert(Utility::decToBin(0) == StaticString<64>('0'));
+    assert(Utility::decToBin(1) == StaticString<64>('1'));
+    assert(Utility::decToBin(2) == StaticString<64>("10"));
+    assert(Utility::decToBin(3) == StaticString<64>("11"));
+    assert(Utility::decToBin(4) == StaticString<64>("100"));
+    assert(Utility::decToBin(12) == StaticString<64>("1100"));
+    assert(Utility::decToBin(128) == StaticString<64>("10000000"));
+    assert(Utility::decToBin(130) == StaticString<64>("10000010"));
+}
+
 void runTests() {
-    testUtilityReverseNumber();
+    testUtilityStringForNumber();
     testUtilitySmallerPower();
-    testDummyAlloc();
+    testUtilityDecToBin();
     testBitset();
+    testDummyAlloc();
 }
 
 int main()
 {
-    std::ofstream logStream("Log.csv");
     Allocator allocator(128);
 
     char * n = static_cast<char*>(allocator.allocate(16));
     strcpy_s(n, 16, "Sixteen bytes!!");
-    
-    char* ptr = static_cast<char*>(allocator.allocate(8));
-    strcpy_s(ptr, 8, "Eight b");
 
     char* str = static_cast<char*>(allocator.allocate(64));
     strcpy_s(str, 64, "The quick brown fox jumps over the lazy dog. Make them 64 chars");
 
-    allocator.deallocate(ptr);
-    allocator.deallocate(n);
-    allocator.deallocate(str);
+    char* n2 = static_cast<char*>(allocator.allocate(16));
+    strcpy_s(n2, 16, "Sixteen bytes@@");
+
+    /*allocator.deallocate(n);
+    allocator.deallocate(str);*/
     
-    char* newString = static_cast<char*>(allocator.allocate(64));
+    /*char* newString = static_cast<char*>(allocator.allocate(64));
     strcpy_s(newString, 64, "Another string with length 64 bytes used for testing here!!!!!!");
 
     n = static_cast<char*>(allocator.allocate(12));
     void* badAllocEx = allocator.allocate(64, std::nothrow);
-    assert(badAllocEx == nullptr);
+    assert(badAllocEx == nullptr);*/
 }

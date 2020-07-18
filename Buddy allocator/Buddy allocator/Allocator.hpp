@@ -47,6 +47,9 @@ private:
 	/// Finds all allocated blocks of memory, logs them and deallocates them
 	void collectGarbage();
 
+	/// Returns true if the block is reserved for use for the allocator
+	bool blockIsReserved(Block* block);
+
 	class SplitTable {
 	private:
 		std::optional<Bitset> table;
@@ -99,7 +102,7 @@ private:
 		std::optional<Bitset> table;
 		std::size_t sizeOfEntireTree;
 	public:
-		FreeTable() :root(false), sizeOfEntireTree(0), table(std::nullopt) {}
+		FreeTable() :root(false), table(std::nullopt), sizeOfEntireTree(0) {}
 		void initTable(std::size_t sizeOfEntireTree, std::byte* buffer, std::size_t sizeInBytes) {
 			this->sizeOfEntireTree = sizeOfEntireTree;
 			this->table.emplace(buffer, sizeInBytes);
@@ -159,6 +162,8 @@ private:
 
 public:
 	Allocator(const std::size_t size, std::ostream& logStream = std::clog);
+	Allocator(const Allocator& other) = delete;
+	Allocator& operator=(const Allocator& other) = delete;
 	~Allocator();
 
 	void* allocate(std::size_t size);

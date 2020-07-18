@@ -20,3 +20,14 @@ unsigned long Utility::closestSmallerPowerOf2(unsigned long number) {
 unsigned long Utility::log2(unsigned long number) {
     return static_cast<unsigned long>(std::log2(number));
 }
+
+StaticString<64> Utility::decToBin(unsigned long number) {
+    if (number == 0) { return { '0' }; }
+    StaticString<64> result;
+    while (number) {
+        result += static_cast<char>((number % 2) + '0');
+        number /= 2;
+    }
+    std::reverse(result.begin(), result.end());
+    return result;
+}

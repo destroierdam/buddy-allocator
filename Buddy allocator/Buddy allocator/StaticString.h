@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 
 template<std::size_t SIZE>
 class StaticString
@@ -21,6 +22,9 @@ public:
 	bool operator!=(const StaticString& other) const;
 
 	std::size_t size() const;
+	StaticString& reverse();
+	StaticString& dropLast();
+	char& operator[](std::size_t index);
 
 	char* begin();
 	char* end();
@@ -72,7 +76,7 @@ inline StaticString<SIZE> StaticString<SIZE>::operator+(const StaticString& othe
 
 template<std::size_t SIZE>
 inline bool StaticString<SIZE>::operator==(const StaticString& other) const {
-	return strcmp(this->data, other.data);
+	return strcmp(this->data, other.data) == 0;
 }
 
 template<std::size_t SIZE>
@@ -84,6 +88,27 @@ inline bool StaticString<SIZE>::operator!=(const StaticString& other) const
 template<std::size_t SIZE>
 inline std::size_t StaticString<SIZE>::size() const {
 	return strlen(this->data);
+}
+
+template<std::size_t SIZE>
+inline StaticString<SIZE>& StaticString<SIZE>::reverse()
+{
+	std::reverse(begin(), end());
+	return *this;
+}
+
+template<std::size_t SIZE>
+inline StaticString<SIZE>& StaticString<SIZE>::dropLast() {
+	const std::size_t length = size();
+	if (length > 0) {
+		data[length - 1] == '\0';
+	}
+	return *this;
+}
+
+template<std::size_t SIZE>
+inline char& StaticString<SIZE>::operator[](std::size_t index) {
+	return this->data[index];
 }
 
 template<std::size_t SIZE>

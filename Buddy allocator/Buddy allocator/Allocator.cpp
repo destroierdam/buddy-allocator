@@ -70,6 +70,7 @@ void Allocator::reserveDummy(std::size_t size) {
     }
 
     available = this->workSize - leafsNeeded*MIN_ALLOC_BLOCK_SIZE;
+    used = 0;
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, 
                "Available for allocation: " + Utility::stringFor(available));
 }
@@ -166,21 +167,18 @@ std::size_t Allocator::levelForAllocatedBlock(std::byte* address)
 }
 
 void Allocator::collectGarbage() {
-    std::size_t level = LEVELS - 1;
+    std::size_t numberOfReservedLeafs = (this->workSize - this->available) / MIN_ALLOC_BLOCK_SIZE;
+    StaticString<64> mask('0');
+    mask += Utility::decToBin((1 << (LEVELS - 1)) - numberOfReservedLeafs);
+    mask.reverse();
+    std::size_t level = 0;
+    bool nodeBit = mask[level] == 1;
+    bool childBit = mask[level + 1] == 1;
+}
 
-    throw std::logic_error("Method not implemented");
-    //while (level > 0) {
-    //    while (this->freeLists[0]) {
-    //        std::size_t size = sizeForLevel(level);
-    //        // Block* rogueBlock = buddyOf(reinterpret_cast<Block*>(this->tree[level]), size);
-    //        
-    //        /*std::array<char, 128> msg;
-    //        "Block at address " + Utility::stringFor(rogueBlock) + " and size " + Utility::stringFor(size) + " was not deallocated";
-    //        logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, msg.data());*/
-    //    }
-    //    level--;
-    //}
-    //assert(this->tree[0] != nullptr);
+bool Allocator::blockIsReserved(Block* block) {
+    const std::byte* const address = reinterpret_cast<std::byte*>(block);
+    return address < (this->workBuffer + (this->workSize - available));
 }
 
 void* Allocator::_allocate(std::size_t size) {
@@ -275,8 +273,7 @@ void Allocator::_deallocate(Block* block, std::size_t size) {
     _deallocate(mergedBlock, size);
 }
 
-Allocator::Allocator(const std::size_t size, std::ostream& logStream) : 
-logger(logStream),
+Allocator::Allocator(const std::size_t size, std::ostream& logStream) : logger(logStream),
 MIN_ALLOC_BLOCK_SIZE(16),
 allocatedBuffer(initBuffer(size)),
 workSize(Utility::closestBiggerPowerOf2(size)),
@@ -295,11 +292,10 @@ allocatedSize(size)
 }
 
 Allocator::~Allocator() {
-    //if (this->freeLists[0] == nullptr) {
-    //    logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak");
-    //    // collectGarbage();
-    //}
-    // assert(false); // used = available
+    if (this->used > 0) {
+        logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak detected");
+        collectGarbage();
+    }
     free(this->allocatedBuffer);
 }
 
@@ -317,6 +313,9 @@ void* Allocator::allocate(std::size_t size) {
 
     logger.log(Logger::SeverityLevel::info, Logger::Action::allocation,
         "Block with address " + Utility::stringFor((long)(ans)) + " is allocated");
+    used += size;
+    logger.log(Logger::SeverityLevel::info, Logger::Action::allocation,
+        "Bytes remaining for allocation: " + Utility::stringFor(available - used));
 
     memset(ans, 'A', size); // 'A'llocated
     return ans;
@@ -349,6 +348,9 @@ void Allocator::deallocate(void* address, std::size_t size) noexcept {
     logger.log(Logger::SeverityLevel::info, Logger::Action::deallocation,
         "Deallocation of block " + Utility::stringFor((long)(address)) + " with size " +
         Utility::stringFor(size) + " bytes completed");
+    used -= size;
+    logger.log(Logger::SeverityLevel::info, Logger::Action::deallocation,
+        "Bytes available for allocation: " + Utility::stringFor(available - used));
 }
 
 void Allocator::deallocate(void* address) noexcept {
