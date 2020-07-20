@@ -9,7 +9,7 @@
 #include <utility>
 #include <string>
 #include <cmath>
-#include "Utility.h"
+#include "Utility.hpp"
 
 std::byte* Allocator::initBuffer(const std::size_t size) {
     logger.log(Logger::SeverityLevel::info, Logger::Action::none, "Allocating buffer");

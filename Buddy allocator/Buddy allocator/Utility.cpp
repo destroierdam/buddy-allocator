@@ -1,4 +1,4 @@
-#include "Utility.h"
+#include "Utility.hpp"
 #include <cmath>
 
 unsigned long Utility::closestBiggerPowerOf2(unsigned long number) {
