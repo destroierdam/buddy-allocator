@@ -44,6 +44,9 @@ private:
 	/// Given an address of an allocated block returns the level in the tree
 	std::size_t levelForAllocatedBlock(std::byte* address);
 
+	/// Given an index of a block deallocates all allocated blocks in it
+	void deallocateTree(std::size_t treeIdx);
+
 	/// Finds all allocated blocks of memory, logs them and deallocates them
 	void collectGarbage();
 

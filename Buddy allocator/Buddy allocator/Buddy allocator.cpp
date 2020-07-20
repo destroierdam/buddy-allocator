@@ -82,16 +82,61 @@ void testUtilityDecToBin() {
     assert(Utility::decToBin(130) == StaticString<64>("10000010"));
 }
 
+void testUtilityPtrToHexStr() {
+    void* ptr1 = reinterpret_cast<void*>(0x00123AA3);
+    assert(Utility::ptrToHexStr(ptr1) == "0x00123AA3");
+    void* ptr2 = reinterpret_cast<void*>(0x01000AA0);
+    assert(Utility::ptrToHexStr(ptr2) == "0x01000AA0");
+}
+
+void gcTwoReservedLeafs() {
+    Allocator a(128);
+    char* idx9 = static_cast<char*>(a.allocate(16));
+    strcpy_s(idx9, 16, "Index 9!16 chs!");
+
+    char* idx10 = static_cast<char*>(a.allocate(16));
+    strcpy_s(idx10, 16, "Index10:16 chs!");
+
+    char* idx2 = static_cast<char*>(a.allocate(64));
+    strcpy_s(idx2, 64, "The quick brown fox jumps over the lazy dog. Make them 64 chars");
+}
+void gcThreeReservedLeafs() {
+    Allocator a(113); 
+
+    char* idx10 = static_cast<char*>(a.allocate(16));
+    strcpy_s(idx10, 16, "Index10!16 chs!");
+
+    char* idx5 = static_cast<char*>(a.allocate(32));
+    strcpy_s(idx5, 32, "Index 5!32 chs!");
+
+    char* idx13 = static_cast<char*>(a.allocate(16));
+    strcpy_s(idx13, 16, "Index13!16 chs!");
+
+    char* idx14 = static_cast<char*>(a.allocate(16));
+    strcpy_s(idx14, 16, "Index14!16 chs!");
+
+    a.deallocate(idx13);
+
+
+}
+void testGarbageCollection() {
+    gcTwoReservedLeafs();
+    gcThreeReservedLeafs();
+}
+
 void runTests() {
     testUtilityStringForNumber();
     testUtilitySmallerPower();
     testUtilityDecToBin();
     testBitset();
     testDummyAlloc();
+    testGarbageCollection();
 }
 
 int main()
 {
+    testGarbageCollection();
+    return 0;
     Allocator allocator(128);
 
     char * n = static_cast<char*>(allocator.allocate(16));
@@ -112,4 +157,5 @@ int main()
     n = static_cast<char*>(allocator.allocate(12));
     void* badAllocEx = allocator.allocate(64, std::nothrow);
     assert(badAllocEx == nullptr);*/
+
 }

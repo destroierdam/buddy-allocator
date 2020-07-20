@@ -12,6 +12,7 @@ public:
     static StaticString<64> stringFor(T number);
     static unsigned long log2(unsigned long number);
     static StaticString<64> decToBin(unsigned long number);
+    static StaticString<64> ptrToHexStr(void* ptr);
 };
 
 template<typename T>

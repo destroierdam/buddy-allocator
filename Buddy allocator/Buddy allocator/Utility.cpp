@@ -31,3 +31,23 @@ StaticString<64> Utility::decToBin(unsigned long number) {
     std::reverse(result.begin(), result.end());
     return result;
 }
+
+StaticString<64> Utility::ptrToHexStr(void* ptr) {
+    unsigned long value = reinterpret_cast<unsigned long>(ptr);
+    StaticString<64> result;
+    while (value) {
+        int digit = value % 16;
+        if (digit < 10) {
+            result += digit + '0';
+        } else {
+            result += 'A' + digit - 10;
+        }
+        value /= 16;
+    }
+    for (std::size_t i = result.size(); i < 8; i++) {
+        result += '0';
+    }
+    result += "x0";
+    result.reverse();
+    return result;
+}

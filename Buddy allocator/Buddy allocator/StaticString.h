@@ -25,6 +25,7 @@ public:
 	StaticString& reverse();
 	StaticString& dropLast();
 	char& operator[](std::size_t index);
+	char operator[](std::size_t index) const;
 
 	char* begin();
 	char* end();
@@ -108,6 +109,11 @@ inline StaticString<SIZE>& StaticString<SIZE>::dropLast() {
 
 template<std::size_t SIZE>
 inline char& StaticString<SIZE>::operator[](std::size_t index) {
+	return this->data[index];
+}
+
+template<std::size_t SIZE>
+inline char StaticString<SIZE>::operator[](std::size_t index) const {
 	return this->data[index];
 }
 

@@ -166,14 +166,75 @@ std::size_t Allocator::levelForAllocatedBlock(std::byte* address)
     return 0;
 }
 
+void Allocator::deallocateTree(std::size_t treeIdx) {
+    if (this->splitTable[treeIdx] == false) {
+        // This entire block is allocated, not some of it's children
+        Block* const rogueBlock = blockForIndex(treeIdx);
+        const std::size_t rogueBlockSize = sizeForLevel(levelForIndex(treeIdx));
+
+        logger.log(Logger::SeverityLevel::warning, Logger::Action::leak,
+            "Address: " + Utility::ptrToHexStr(rogueBlock));
+        logger.log(Logger::SeverityLevel::warning, Logger::Action::leak,
+            "Size: " + Utility::stringFor(rogueBlockSize));
+
+        deallocate(rogueBlock, rogueBlockSize);
+    } else {
+        std::size_t leftChildIdx = 2 * treeIdx + 1;
+        std::size_t rightChildIdx = 2 * treeIdx + 2;
+        // If both children are not free
+        if (this->freeTable[leftChildIdx] == 0) { // Or right child, doesn't matter
+            deallocateTree(leftChildIdx);
+            deallocateTree(rightChildIdx);
+        } else {
+            std::size_t level = levelForIndex(leftChildIdx); // Or right child, doesn't matter
+            // Check whether the node is in the free list
+            Block* block = this->blockForIndex(leftChildIdx);
+            Block* it = this->freeLists[level];
+            bool found = false;
+            while (it != nullptr) {
+                if (it == block) {
+                    found = true;
+                    break;
+                }
+                it = it->next;
+            }
+            // It the node is in the free list, aka it is not allocated
+            if (found) {
+                // Deallocate its buddy
+                deallocateTree(rightChildIdx);
+            } else {
+                deallocateTree(leftChildIdx);
+            }
+        }
+    }
+}
+
 void Allocator::collectGarbage() {
-    std::size_t numberOfReservedLeafs = (this->workSize - this->available) / MIN_ALLOC_BLOCK_SIZE;
-    StaticString<64> mask('0');
-    mask += Utility::decToBin((1 << (LEVELS - 1)) - numberOfReservedLeafs);
-    mask.reverse();
+    const std::size_t numberOfReservedLeafs = (this->workSize - this->available) / MIN_ALLOC_BLOCK_SIZE;
+    const StaticString<64> mask("0" + Utility::decToBin((1 << (LEVELS - 1)) - numberOfReservedLeafs));
+    // On each index the mask shows whether there must be a free block in that level; if mask[level] == 1 then there must be a free block 
+
+    std::size_t idx = 0;
     std::size_t level = 0;
-    bool nodeBit = mask[level] == 1;
-    bool childBit = mask[level + 1] == 1;
+    while (level < LEVELS - 1) {
+        const bool childBit = mask[level + 1] == '1';
+        const std::size_t leftIdx = 2 * idx + 1;
+        const std::size_t rightIdx = 2 * idx + 2;
+
+        // If there must be a free block
+        if (childBit) {
+            // But the block isn't free
+            if (this->freeTable[rightIdx] == 0) {
+                // Free the block by deallocating all blocks in the whole subtree
+                deallocateTree(rightIdx);
+            }
+            idx = leftIdx;
+        }
+        else {
+            idx = rightIdx;
+        }
+        level++;
+    }
 }
 
 bool Allocator::blockIsReserved(Block* block) {
@@ -295,6 +356,12 @@ Allocator::~Allocator() {
     if (this->used > 0) {
         logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak detected");
         collectGarbage();
+    }
+    if (used == 0) {
+        logger.log(Logger::SeverityLevel::info, Logger::Action::leak, "All memory leaks resolved");
+    }
+    else {
+        logger.log(Logger::SeverityLevel::warning, Logger::Action::leak, "Memory leak not cleaned");
     }
     free(this->allocatedBuffer);
 }
