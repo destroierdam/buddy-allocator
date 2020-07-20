@@ -3,8 +3,8 @@
 #include <array>
 #include <bitset>
 #include <cassert>
-#include "Logger.h"
-#include "Bitset.h"
+#include "Logger.hpp"
+#include "Bitset.hpp"
 
 class Allocator {
 private:

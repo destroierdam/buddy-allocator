@@ -163,9 +163,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Allocator.hpp" />
-    <ClInclude Include="Bitset.h" />
-    <ClInclude Include="Logger.h" />
-    <ClInclude Include="StaticString.h" />
+    <ClInclude Include="Bitset.hpp" />
+    <ClInclude Include="Logger.hpp" />
+    <ClInclude Include="StaticString.hpp" />
     <ClInclude Include="Utility.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

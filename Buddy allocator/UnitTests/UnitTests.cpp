@@ -2,7 +2,7 @@
 #include "CppUnitTest.h"
 #include <cstddef>
 #include "../Buddy allocator/Utility.hpp"
-#include "../Buddy allocator/Bitset.h"
+#include "../Buddy allocator/Bitset.hpp"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 

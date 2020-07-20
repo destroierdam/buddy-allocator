@@ -1,4 +1,4 @@
-#include "Bitset.h"
+#include "Bitset.hpp"
 #include <climits>
 #include <cstring>
 

@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cmath>
 #include <algorithm>
-#include "StaticString.h"
+#include "StaticString.hpp"
 
 class Utility {
 public:

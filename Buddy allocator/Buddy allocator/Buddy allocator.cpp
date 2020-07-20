@@ -3,9 +3,7 @@
 #include <cstring>
 #include "Allocator.hpp"
 #include "Utility.hpp"
-#include "StaticString.h"
-#include "Bitset.h"
-#include <cassert>
+#include "StaticString.hpp"
 
 void testDummyAlloc() {
     Allocator a(95);

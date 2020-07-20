@@ -4,7 +4,7 @@
 #include <ctime>
 #include <string>
 #include <optional>
-#include "StaticString.h"
+#include "StaticString.hpp"
 
 class Logger
 {
