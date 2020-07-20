@@ -379,7 +379,7 @@ void* Allocator::allocate(std::size_t size) {
     void* const ans = _allocate(size);
 
     logger.log(Logger::SeverityLevel::info, Logger::Action::allocation,
-        "Block with address " + Utility::stringFor((long)(ans)) + " is allocated");
+        "Block with address " + Utility::ptrToHexStr(ans) + " is allocated");
     used += size;
     logger.log(Logger::SeverityLevel::info, Logger::Action::allocation,
         "Bytes remaining for allocation: " + Utility::stringFor(available - used));
@@ -404,7 +404,7 @@ void* Allocator::allocate(std::size_t size, std::nothrow_t) noexcept
 
 void Allocator::deallocate(void* address, std::size_t size) noexcept {
     logger.log(Logger::SeverityLevel::info, Logger::Action::deallocation,
-        "Request for deallocation of block " + Utility::stringFor((long)(address)) + " with size " + 
+        "Request for deallocation of block " + Utility::ptrToHexStr(address) + " with size " + 
          Utility::stringFor(size) + " bytes");
 
     size = Utility::closestBiggerPowerOf2(size);
@@ -413,7 +413,7 @@ void Allocator::deallocate(void* address, std::size_t size) noexcept {
     _deallocate(reinterpret_cast<Block*>(address), size);
 
     logger.log(Logger::SeverityLevel::info, Logger::Action::deallocation,
-        "Deallocation of block " + Utility::stringFor((long)(address)) + " with size " +
+        "Deallocation of block " + Utility::ptrToHexStr(address) + " with size " +
         Utility::stringFor(size) + " bytes completed");
     used -= size;
     logger.log(Logger::SeverityLevel::info, Logger::Action::deallocation,

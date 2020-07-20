@@ -87,6 +87,9 @@ void testUtilityPtrToHexStr() {
     assert(Utility::ptrToHexStr(ptr1) == "0x00123AA3");
     void* ptr2 = reinterpret_cast<void*>(0x01000AA0);
     assert(Utility::ptrToHexStr(ptr2) == "0x01000AA0");
+
+    void* null = reinterpret_cast<void*>(0x00000000);
+    assert(Utility::ptrToHexStr(null) == "0x00000000");
 }
 
 void gcTwoReservedLeafs() {
@@ -131,12 +134,12 @@ void runTests() {
     testBitset();
     testDummyAlloc();
     testGarbageCollection();
+    testUtilityPtrToHexStr();
 }
 
 int main()
 {
-    testGarbageCollection();
-    return 0;
+    runTests();
     Allocator allocator(128);
 
     char * n = static_cast<char*>(allocator.allocate(16));
