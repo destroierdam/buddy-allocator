@@ -53,8 +53,8 @@ void runTests() {
 
 int main()
 {
-    runTests();
-    Allocator allocator(128);
+    // runTests();
+    Allocator allocator(129);
 
     char * n = static_cast<char*>(allocator.allocate(16));
     strcpy_s(n, 16, "Sixteen bytes!!");

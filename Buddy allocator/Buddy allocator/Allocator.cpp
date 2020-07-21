@@ -211,8 +211,14 @@ void Allocator::deallocateTree(std::size_t treeIdx) {
 
 void Allocator::collectGarbage() {
     const std::size_t numberOfReservedLeafs = (this->workSize - this->available) / MIN_ALLOC_BLOCK_SIZE;
-    const StaticString<64> mask("0" + Utility::decToBin((1 << (LEVELS - 1)) - numberOfReservedLeafs));
     // On each index the mask shows whether there must be a free block in that level; if mask[level] == 1 then there must be a free block 
+    StaticString<64> mask; 
+    const StaticString<64> maskNoWidth = Utility::decToBin((1 << (LEVELS - 1)) - numberOfReservedLeafs);
+
+    for (std::size_t i = maskNoWidth.size(); i < LEVELS; ++i) {
+        mask += '0';
+    }
+    mask += maskNoWidth;
 
     std::size_t idx = 0;
     std::size_t level = 0;
